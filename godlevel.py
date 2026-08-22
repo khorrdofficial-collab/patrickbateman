@@ -95,7 +95,7 @@ def get_system_prompt(level):
 # Warning မတက်စေရန် Client.chats.create() ကို အသုံးပြု၍ Chat Session ဖန်တီးခြင်း
 if "chat_session" not in st.session_state or st.session_state.get("current_level") != st.session_state.ai_level:
     st.session_state.chat_session = client.chats.create(
-        model="gemini-1.5-pro-latest",
+        model="gemini-1.5-pro",
         config=types.GenerateContentConfig(
             system_instruction=get_system_prompt(st.session_state.ai_level)
         )
