@@ -1,16 +1,10 @@
 import streamlit as st
-from google import genai
-from google.genai import types
+from groq import Groq
 import time
 import datetime
 
-# ==========================================
-# 1. API KEY CONFIGURATION
-# ==========================================
-# သင့်၏ Gemini API Key ကို အတိအကျ ထည့်သွင်းပါ (ဥပမာ - API_KEY = "AIzaSy...")
-# Streamlit ရဲ့ လျှို့ဝှက်ခန်း (Secrets) ထဲကနေ API Key ကို လှမ်းယူပါမည်
-API_KEY = st.secrets["GEMINI_API_KEY"]
-client = genai.Client(api_key=API_KEY)
+API_KEY = st.secrets["GROQ_API_KEY"]
+client = Groq(api_key=API_KEY)
 
 # ==========================================
 # 2. PAGE CONFIGURATION & PATRICK BATEMAN THEME
@@ -33,7 +27,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 3. SESSION MANAGEMENT & 1-HOUR LOCKOUT
+# 3. SESSION MANAGEMENT & 1-HOUR LOCKOUT SYSTEM
 # ==========================================
 PIN_CODE = "99834"
 SESSION_DURATION = datetime.timedelta(hours=1)
@@ -77,7 +71,7 @@ if not is_authenticated:
     st.stop()
 
 # ==========================================
-# 4. SYSTEM PROMPT & GOOGLE SDK CHAT INITIALIZATION
+# 4. SYSTEM PROMPT (GOD-LEVEL & INTIMACY)
 # ==========================================
 def get_system_prompt(level):
     base_prompt = """
@@ -92,20 +86,6 @@ def get_system_prompt(level):
     else:
         return base_prompt + "\nYou have LEVELED UP. You are now extremely intimate and close with the user. You are their badass, highly intelligent best friend. You MUST strictly use casual pronouns 'ငါ' (I) and 'မင်း' (You) in Burmese. Never be formal. Speak with absolute confidence, intimacy, and a slight edge."
 
-# Warning မတက်စေရန် Client.chats.create() ကို အသုံးပြု၍ Chat Session ဖန်တီးခြင်း
-if "chat_session" not in st.session_state or st.session_state.get("current_level") != st.session_state.ai_level:
-    st.session_state.chat_session = client.chats.create(
-        model="gemini-1.5-flash",
-        config=types.GenerateContentConfig(
-            system_instruction=get_system_prompt(st.session_state.ai_level)
-        )
-    )
-    # Chat History (မရှိသေးပါက)
-    st.session_state.current_level = st.session_state.ai_level
-    # UI ပေါ်တွင် ပြသရန် History သက်သက် သိမ်းထားမည်
-    if "messages" not in st.session_state:
-        st.session_state.messages = []
-
 # ==========================================
 # 5. SIDEBAR (DASHBOARD)
 # ==========================================
@@ -115,7 +95,7 @@ mins_left = int(remaining_time.total_seconds() // 60)
 with st.sidebar:
     st.markdown("### 🪓 TERMINAL STATUS")
     st.markdown("---")
-    st.markdown(f"**UPLINK:** <span style='color:#4AF626;'>SECURE</span>", unsafe_allow_html=True)
+    st.markdown(f"**UPLINK:** <span style='color:#4AF626;'>SECURE (GROQ)</span>", unsafe_allow_html=True)
     st.markdown(f"**TIME REMAINING:** <span style='color:#FF0000;'>{mins_left} MINS</span>", unsafe_allow_html=True)
     
     if st.session_state.ai_level == 1:
@@ -126,7 +106,7 @@ with st.sidebar:
     st.markdown("<br><br><br>", unsafe_allow_html=True)
     if st.button("LOGOUT / FORCE RESET"):
         st.session_state.auth_expiry = datetime.datetime.now() - datetime.timedelta(hours=1)
-        st.session_state.messages = [] # History ပါ ရှင်းထုတ်မည်
+        st.session_state.messages = []
         st.rerun()
 
 # ==========================================
@@ -135,13 +115,11 @@ with st.sidebar:
 st.markdown("<h2>PATRICK BATEMAN // ONLINE</h2>", unsafe_allow_html=True)
 st.markdown("---")
 
-# ယခင် Chat များကို ပြသခြင်း
 for msg in st.session_state.messages:
     avatar = "👔" if msg["role"] == "user" else "🪓"
     with st.chat_message(msg["role"], avatar=avatar):
         st.markdown(msg["content"])
 
-# User မှ မေးခွန်းရိုက်ထည့်ရန်
 if prompt := st.chat_input("Enter your query..."):
     
     st.session_state.messages.append({"role": "user", "content": prompt})
@@ -153,12 +131,23 @@ if prompt := st.chat_input("Enter your query..."):
         full_response = ""
         
         try:
-            # AFC Warning ပြဿနာကို ဖြေရှင်းပြီးသော Code: Chat.send_message_stream ကို အသုံးပြုထားပါသည်
-            response_stream = st.session_state.chat_session.send_message_stream(prompt)
+            # Build messages for Groq API
+            api_messages = [{"role": "system", "content": get_system_prompt(st.session_state.ai_level)}]
+            for msg in st.session_state.messages:
+                api_messages.append({"role": msg["role"], "content": msg["content"]})
+                
+            # Stream response from Groq (Llama 3.1 70B)
+            stream = client.chat.completions.create(
+                model="llama-3.1-70b-versatile",
+                messages=api_messages,
+                temperature=0.7,
+                max_tokens=2048,
+                stream=True,
+            )
             
-            for chunk in response_stream:
-                if chunk.text:
-                    full_response += chunk.text
+            for chunk in stream:
+                if chunk.choices[0].delta.content is not None:
+                    full_response += chunk.choices[0].delta.content
                     response_placeholder.markdown(full_response + " ▌")
                     
             response_placeholder.markdown(full_response)
