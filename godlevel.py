@@ -9,7 +9,7 @@ import datetime
 # ==========================================
 # သင့်၏ Gemini API Key ကို အတိအကျ ထည့်သွင်းပါ (ဥပမာ - API_KEY = "AIzaSy...")
 # Streamlit ရဲ့ လျှို့ဝှက်ခန်း (Secrets) ထဲကနေ API Key ကို လှမ်းယူပါမည်
-API_KEY = st.secrets["AQ.Ab8RN6IK6Dbyw7AUFkiRFp4SF_El5Z_eMaPD7TLOtVmESqP_xA"]
+API_KEY = st.secrets["GEMINI_API_KEY"]
 client = genai.Client(api_key=API_KEY)
 
 # ==========================================
