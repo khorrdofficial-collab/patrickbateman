@@ -138,7 +138,7 @@ if prompt := st.chat_input("Enter your query..."):
                 
             # Stream response from Groq (Llama 3.1 70B)
             stream = client.chat.completions.create(
-                model="llama-3.3-70b-versatile",
+                model="openai/gpt-oss-120b",
                 messages=api_messages,
                 temperature=0.7,
                 max_tokens=2048,
